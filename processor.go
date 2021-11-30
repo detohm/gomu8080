@@ -93,7 +93,10 @@ func (p *Processor) inr(reg *byte) {
 	result := uint16(*reg) + 1
 	*reg = byte(result & 0x00ff)
 
-	// TODO - calculate flags
+	// TODO - calculate affected flags: z, s, p, aux
+	p.SetZero(*reg)
+	p.SetSign(*reg)
+	p.SetParity(*reg)
 }
 
 // Decrease value of 8-bit register by 1
@@ -102,11 +105,38 @@ func (p *Processor) dcr(reg *byte) {
 	result := uint16(*reg) - 1
 	*reg = byte(result & 0xff)
 
-	// TODO - calculate flags
+	// TODO - calculate affected flags: z, s, p, aux
+
 }
 
 func (p *Processor) unimplemented() {
 	p.dasm(fmt.Sprintf("%02x:UNIMPLEMENTED", p.mmu.Memory[p.PC]))
+}
+
+// Flags Helper
+func (p *Processor) SetZero(result byte) {
+	p.Zero = (result & 0xFF) == 0
+}
+func (p *Processor) SetSign(result byte) {
+	p.Sign = (result & 0x80) == 0x80
+}
+func (p *Processor) SetParity(result byte) {
+
+	oneCount := 0
+
+	for i := 0; i < 8; i++ {
+
+		if result&0x01 > 0 {
+			oneCount += 1
+		}
+		result = result >> 1
+	}
+
+	p.Parity = oneCount%2 == 0
+}
+func (p *Processor) SetAuxiliaryCarry(result uint16) {
+	// TODO - implement ac calculation
+	p.AuxiliaryCarry = false
 }
 
 // DEBUGGER
