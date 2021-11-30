@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
-	p := gomu8080.Processor{}
-	fmt.Println(p)
+	mmu := gomu8080.NewMMU()
+	p := gomu8080.NewProcessor(mmu, true)
+	fmt.Printf("%+v", p)
 }
