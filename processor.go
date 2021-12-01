@@ -71,8 +71,52 @@ func (p *Processor) Run() {
 		p.nop()
 	case 0x09:
 		p.dad(&p.B, &p.C)
-	case 0x10:
+	case 0x0A:
 		p.ldax(&p.B, &p.C)
+	case 0x0B:
+		p.dcx(&p.B, &p.C)
+	case 0x0C:
+		p.inr(&p.C)
+	case 0x0D:
+		p.dcr(&p.C)
+	case 0x0E:
+		p.mvi(&p.C)
+	case 0x0F:
+		p.rrc()
+
+	case 0x10:
+		p.nop()
+	case 0x11:
+		p.lxi(&p.H, &p.L)
+	case 0x12:
+		p.stax(&p.D, &p.E)
+	case 0x13:
+		p.inx(&p.D, &p.E)
+	case 0x14:
+		p.inr(&p.D)
+	case 0x15:
+		p.dcr(&p.D)
+	case 0x16:
+		p.mvi(&p.D)
+	case 0x17:
+		p.ral()
+	case 0x18:
+		p.nop()
+	case 0x19:
+		p.dad(&p.D, &p.E)
+	case 0x1A:
+		p.ldax(&p.D, &p.E)
+	case 0x1B:
+		p.dcx(&p.D, &p.E)
+	case 0x1C:
+		p.inr(&p.E)
+	case 0x1D:
+		p.dcr(&p.E)
+	case 0x1E:
+		p.mvi(&p.E)
+	case 0x1F:
+		p.rar()
+
 	default:
 		p.unimplemented()
 	}
@@ -96,6 +140,15 @@ func (p *Processor) inx(msb *byte, lsb *byte) {
 	*lsb += 1
 	if *lsb == 0 {
 		*msb += 1
+	}
+}
+
+// Decrease value of register pair by 1
+func (p *Processor) dcx(msb *byte, lsb *byte) {
+	p.dasm("DCX")
+	*lsb -= 1
+	if *lsb == 0xFF {
+		*msb -= 1
 	}
 }
 
@@ -136,6 +189,37 @@ func (p *Processor) rlc() {
 	aux := p.A
 	p.A = aux<<1 | aux>>7
 	p.Carry = (aux >> 7) > 0
+}
+
+// Rotate accumulator right
+func (p *Processor) rrc() {
+	p.dasm("RRC")
+	aux := p.A
+	p.A = aux>>1 | ((aux << 7) & 0x80)
+	p.Carry = aux&0x01 > 0
+}
+
+// Rorate accumulator left through carry
+func (p *Processor) ral() {
+	p.dasm("RAL")
+	aux := p.A
+	p.A = aux << 1
+
+	if p.Carry {
+		p.A = p.A | 0x01
+	}
+	p.Carry = (aux >> 7) > 0
+}
+
+// Rotate accumulator right through carry
+func (p *Processor) rar() {
+	p.dasm("RAR")
+	aux := p.A
+	p.A = aux >> 1
+	if p.Carry {
+		p.A += 0x80 // set 1 to most significant bit
+	}
+	p.Carry = aux&0x01 > 0
 }
 
 // Double Add - add specified register pair to HL
