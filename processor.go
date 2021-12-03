@@ -337,6 +337,184 @@ func (p *Processor) Run() {
 	case 0x7F:
 		p.mov(&p.A, &p.A)
 
+	/* 8x */
+	// add
+	case 0x80:
+		p.add(&p.B)
+	case 0x81:
+		p.add(&p.C)
+	case 0x82:
+		p.add(&p.D)
+	case 0x83:
+		p.add(&p.E)
+	case 0x84:
+		p.add(&p.H)
+	case 0x85:
+		p.add(&p.L)
+	case 0x86:
+		p.add(&p.mmu.Memory[address])
+	case 0x87:
+		p.add(&p.A)
+	// adc
+	case 0x88:
+		p.adc(&p.B)
+	case 0x89:
+		p.adc(&p.C)
+	case 0x8A:
+		p.adc(&p.D)
+	case 0x8B:
+		p.adc(&p.E)
+	case 0x8C:
+		p.adc(&p.H)
+	case 0x8D:
+		p.adc(&p.L)
+	case 0x8E:
+		p.adc(&p.mmu.Memory[address])
+	case 0x8F:
+		p.adc(&p.A)
+
+	/* 9x */
+	// sub
+	case 0x90:
+		p.sub(&p.B)
+	case 0x91:
+		p.sub(&p.C)
+	case 0x92:
+		p.sub(&p.D)
+	case 0x93:
+		p.sub(&p.E)
+	case 0x94:
+		p.sub(&p.H)
+	case 0x95:
+		p.sub(&p.L)
+	case 0x96:
+		p.sub(&p.mmu.Memory[address])
+	case 0x97:
+		p.sub(&p.A)
+		// sbb
+	case 0x98:
+		p.sbb(&p.B)
+	case 0x99:
+		p.sbb(&p.C)
+	case 0x9A:
+		p.sbb(&p.D)
+	case 0x9B:
+		p.sbb(&p.E)
+	case 0x9C:
+		p.sbb(&p.H)
+	case 0x9D:
+		p.sbb(&p.L)
+	case 0x9E:
+		p.sbb(&p.mmu.Memory[address])
+	case 0x9F:
+		p.sbb(&p.A)
+
+	/* Ax */
+	// ana
+	case 0xA0:
+		p.ana(&p.B)
+	case 0xA1:
+		p.ana(&p.C)
+	case 0xA2:
+		p.ana(&p.D)
+	case 0xA3:
+		p.ana(&p.E)
+	case 0xA4:
+		p.ana(&p.H)
+	case 0xA5:
+		p.ana(&p.L)
+	case 0xA6:
+		p.ana(&p.mmu.Memory[address])
+	case 0xA7:
+		p.ana(&p.A)
+	// xra
+	case 0xA8:
+		p.xra(&p.B)
+	case 0xA9:
+		p.xra(&p.C)
+	case 0xAA:
+		p.xra(&p.D)
+	case 0xAB:
+		p.xra(&p.E)
+	case 0xAC:
+		p.xra(&p.H)
+	case 0xAD:
+		p.xra(&p.L)
+	case 0xAE:
+		p.xra(&p.mmu.Memory[address])
+	case 0xAF:
+		p.xra(&p.A)
+
+	/* Bx */
+	// ora
+	case 0xB0:
+		p.ora(&p.B)
+	case 0xB1:
+		p.ora(&p.C)
+	case 0xB2:
+		p.ora(&p.D)
+	case 0xB3:
+		p.ora(&p.E)
+	case 0xB4:
+		p.ora(&p.H)
+	case 0xB5:
+		p.ora(&p.L)
+	case 0xB6:
+		p.ora(&p.mmu.Memory[address])
+	case 0xB7:
+		p.ora(&p.A)
+	// cmp
+	case 0xB8:
+		p.cmp(&p.B)
+	case 0xB9:
+		p.cmp(&p.C)
+	case 0xBA:
+		p.cmp(&p.D)
+	case 0xBB:
+		p.cmp(&p.E)
+	case 0xBC:
+		p.cmp(&p.H)
+	case 0xBD:
+		p.cmp(&p.L)
+	case 0xBE:
+		p.cmp(&p.mmu.Memory[address])
+	case 0xBF:
+		p.cmp(&p.A)
+
+	/* Cx */
+	case 0xC0:
+		p.rnz()
+	case 0xC1:
+		p.pop(&p.B, &p.C)
+	case 0xC2:
+		p.jnz()
+	case 0xC3:
+		p.jmp()
+	case 0xC4:
+		p.cnz()
+	case 0xC5:
+		p.push(&p.B, &p.C)
+	case 0xC6:
+		p.adi()
+	case 0xC7:
+		p.rst(0)
+	case 0xC8:
+		p.rz()
+	case 0xC9:
+		p.ret()
+	case 0xCA:
+		p.jz()
+	case 0xCB:
+		p.jmp()
+	case 0xCC:
+		p.cz()
+	case 0xCD:
+		p.call()
+	case 0xCE:
+		p.aci()
+	case 0xCF:
+		p.rst(1)
+
 	default:
 		p.unimplemented()
 	}
@@ -470,6 +648,67 @@ func (p *Processor) rar() {
 	p.Carry = aux&0x01 > 0
 }
 
+// Add register or memory to accumulator
+func (p *Processor) add(reg *byte) {
+	p.dasm("ADD")
+	result := uint16(p.A) + uint16(*reg)
+	lsb := byte(result & 0x00FF)
+	p.A = lsb
+
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	p.Carry = result > 0xFF
+}
+
+// Add register or memory to accumulator with carry
+func (p *Processor) adc(reg *byte) {
+	p.dasm("ADC")
+	result := uint16(p.A) + uint16(*reg)
+	if p.Carry {
+		result += 0x01
+	}
+	lsb := byte(result & 0x00FF)
+	p.A = lsb
+
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	p.Carry = result > 0xFF
+}
+
+// Add Immediate to Accumulator
+func (p *Processor) adi() {
+	p.dasm("ADI")
+	result := uint16(p.A) + uint16(p.mmu.Memory[p.PC])
+	lsb := byte(result & 0x00FF)
+
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	p.Carry = result > 0xFF
+}
+
+// Add Immediate to Accumulator with carry
+func (p *Processor) aci() {
+	p.dasm("ACI")
+	result := uint16(p.A) + uint16(p.mmu.Memory[p.PC])
+	if p.Carry {
+		result += 0x01
+	}
+
+	lsb := byte(result & 0x00FF)
+
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	p.Carry = result > 0xFF
+}
+
 // Double Add - add specified register pair to HL
 func (p *Processor) dad(msb *byte, lsb *byte) {
 	p.dasm("DAD")
@@ -491,6 +730,90 @@ func (p *Processor) dad16(reg *uint16) {
 	p.H = byte(HL >> 8)
 	p.L = byte(HL & 0xFF)
 	p.Carry = HL > 0xFFFF
+}
+
+// Subtract register or memory from accumulator
+func (p *Processor) sub(reg *byte) {
+	p.dasm("SUB")
+	result := uint16(p.A) + uint16(^*reg) + 0x1
+
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0x00FF {
+		p.Carry = true
+	}
+}
+
+// Subtract register or memory from accumulator with borrow
+func (p *Processor) sbb(reg *byte) {
+	p.dasm("SBB")
+	result := uint16(p.A) + uint16(^*reg) + 0x1
+	if p.Carry {
+		result += 0x01
+	}
+
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0x00FF {
+		p.Carry = true
+	}
+}
+
+// Logical AND register or memory with accumulator
+func (p *Processor) ana(reg *byte) {
+	p.dasm("ANA")
+	p.A &= *reg
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	// TODO implement auxiliary carry
+	p.SetParity(p.A)
+	p.Carry = false
+}
+
+// Logical XOR register or memory with accumulator
+func (p *Processor) xra(reg *byte) {
+	p.dasm("XRA")
+	p.A ^= *reg
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.AuxiliaryCarry = false
+	p.SetParity(p.A)
+	p.Carry = false
+}
+
+// Logical OR register or memory with accumulator
+func (p *Processor) ora(reg *byte) {
+	p.dasm("XRA")
+	p.A |= *reg
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	// TODO implement auxiliary carry
+	p.SetParity(p.A)
+	p.Carry = false
+}
+
+// Compare register or memory with accumulator
+func (p *Processor) cmp(reg *byte) {
+	p.dasm("CMP")
+	result := uint16(p.A) + uint16(^*reg) + 0x01
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0xFF {
+		p.Carry = true
+	}
+
 }
 
 // Load Accumulator - load data from the provided address
@@ -584,12 +907,151 @@ func (p *Processor) cmc() {
 
 // Set Carry
 func (p *Processor) stc() {
+	p.dasm("STC")
 	p.Carry = true
 }
 
 // Halt
 func (p *Processor) hlt() {
+	p.dasm("HLT")
 	p.IsHalt = true
+}
+
+/* subroutine instruction */
+// Internal Call subroutine
+func (p *Processor) intCall() {
+
+	address := (uint16(p.PC+1) << 8) | uint16(p.PC)
+	returnAddress := p.PC + 2
+
+	// push return address into stack
+	// msb
+	p.mmu.Memory[p.SP-1] = byte(returnAddress >> 8)
+	// lsb
+	p.mmu.Memory[p.SP-2] = byte(returnAddress & 0x00FF)
+
+	// move stack pointer downward as "push"
+	p.SP -= 2
+
+	// set next instruction fetch to the call address
+	p.PC = address
+}
+
+// Return from subroutine
+func (p *Processor) intRet() {
+	p.dasm("RET")
+	p.PC = uint16(p.mmu.Memory[p.SP+1]) << 8
+	p.PC |= uint16(p.mmu.Memory[p.SP])
+
+	p.SP += 2
+}
+
+// Call instruction
+func (p *Processor) call() {
+	p.dasm("CALL")
+	p.intCall()
+}
+
+// Call if not zero
+func (p *Processor) cnz() {
+	p.dasm("CNZ")
+	if !p.Zero {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if zero
+func (p *Processor) cz() {
+	p.dasm("CZ")
+	if p.Zero {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Return instruction
+func (p *Processor) ret() {
+	p.dasm("RET")
+	p.intRet()
+}
+
+// return if not zero
+func (p *Processor) rnz() {
+	p.dasm("RNZ")
+	if !p.Zero {
+		p.intRet()
+	}
+}
+
+// return if zero
+func (p *Processor) rz() {
+	p.dasm("RZ")
+	if p.Zero {
+		p.intRet()
+	}
+}
+
+// restart
+func (p *Processor) rst(pos uint16) {
+	p.dasm("RST")
+	msb := byte(p.PC >> 8)
+	lsb := byte(p.PC & 0x00FF)
+	p.mmu.Memory[p.SP-1] = msb
+	p.mmu.Memory[p.SP-2] = lsb
+	p.SP += 2
+
+	address := uint16(pos << 3)
+	p.PC = address
+}
+
+// push data onto stack
+func (p *Processor) push(msb *byte, lsb *byte) {
+	p.dasm("PUSH")
+	p.mmu.Memory[p.SP-1] = *msb
+	p.mmu.Memory[p.SP-2] = *lsb
+	p.SP -= 2
+}
+
+// pop data off stack (register pair)
+func (p *Processor) pop(msb *byte, lsb *byte) {
+	p.dasm("POP")
+	*lsb = p.mmu.Memory[p.SP]
+	*msb = p.mmu.Memory[p.SP+1]
+	p.SP += 2
+}
+
+/* JUMP Instruction */
+// internal jump
+func (p *Processor) intJmp() {
+	lsb := p.mmu.Memory[p.PC]
+	msb := p.mmu.Memory[p.PC+1]
+
+	p.PC = (uint16(msb) << 8) | uint16(lsb)
+}
+
+// jmp instruction
+func (p *Processor) jmp() {
+	p.dasm("JMP")
+	p.intJmp()
+}
+
+// jump if not zero
+func (p *Processor) jnz() {
+	p.dasm("JNZ")
+	if !p.Zero {
+		p.intJmp()
+	}
+}
+
+// jump if zero
+func (p *Processor) jz() {
+	p.dasm("JZ")
+	if p.Zero {
+		p.intJmp()
+	}
 }
 
 // Unimplemented
