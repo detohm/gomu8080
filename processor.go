@@ -591,7 +591,7 @@ func (p *Processor) Run() {
 	case 0xF2:
 		p.jp()
 	case 0xF3:
-		// DI
+		p.di()
 	case 0xF4:
 		p.cp()
 	case 0xF5:
@@ -607,7 +607,7 @@ func (p *Processor) Run() {
 	case 0xFA:
 		p.jm()
 	case 0xFB:
-		// EI
+		p.ei()
 	case 0xFC:
 		p.cm()
 	case 0xFD:
@@ -1518,6 +1518,18 @@ func (p *Processor) in() {
 func (p *Processor) out() {
 	p.dasm("OUT")
 	p.PC += 1
+}
+
+// Enable Interuption
+func (p *Processor) ei() {
+	p.dasm("EI")
+	// TODO - implementation
+}
+
+// Disable Interuption
+func (p *Processor) di() {
+	p.dasm("DI")
+	// TODO - implementation
 }
 
 // Unimplemented
