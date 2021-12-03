@@ -515,6 +515,108 @@ func (p *Processor) Run() {
 	case 0xCF:
 		p.rst(1)
 
+	/* Dx */
+	case 0xD0:
+		p.rnc()
+	case 0xD1:
+		p.pop(&p.D, &p.E)
+	case 0xD2:
+		p.jnc()
+	case 0xD3:
+		p.out()
+	case 0xD4:
+		p.cnc()
+	case 0xD5:
+		p.push(&p.D, &p.E)
+	case 0xD6:
+		p.sui()
+	case 0xD7:
+		p.rst(2)
+	case 0xD8:
+		p.rc()
+	case 0xD9:
+		p.ret()
+	case 0xDA:
+		p.jc()
+	case 0xDB:
+		p.in()
+	case 0xDC:
+		p.cc()
+	case 0xDD:
+		p.call()
+	case 0xDE:
+		p.sbi()
+	case 0xDF:
+		p.rst(3)
+
+	/* Ex */
+	case 0xE0:
+		p.rpo()
+	case 0xE1:
+		p.pop(&p.H, &p.L)
+	case 0xE2:
+		p.jpo()
+	case 0xE3:
+		p.xthl()
+	case 0xE4:
+		p.cpo()
+	case 0xE5:
+		p.push(&p.H, &p.L)
+	case 0xE6:
+		p.ani()
+	case 0xE7:
+		p.rst(4)
+	case 0xE8:
+		p.rpe()
+	case 0xE9:
+		p.pchl()
+	case 0xEA:
+		p.jpe()
+	case 0xEB:
+		p.xchg()
+	case 0xEC:
+		p.cpe()
+	case 0xED:
+		p.call()
+	case 0xEE:
+		p.xri()
+	case 0xEF:
+		p.rst(5)
+
+	/* Fx */
+	case 0xF0:
+		p.rp()
+	case 0xF1:
+		p.popPSW()
+	case 0xF2:
+		p.jp()
+	case 0xF3:
+		// DI
+	case 0xF4:
+		p.cp()
+	case 0xF5:
+		p.pushPSW()
+	case 0xF6:
+		p.ori()
+	case 0xF7:
+		p.rst(6)
+	case 0xF8:
+		p.rm()
+	case 0xF9:
+		p.sphl()
+	case 0xFA:
+		p.jm()
+	case 0xFB:
+		// EI
+	case 0xFC:
+		p.cm()
+	case 0xFD:
+		p.call()
+	case 0xFE:
+		p.cpi()
+	case 0xFF:
+		p.rst(7)
+
 	default:
 		p.unimplemented()
 	}
@@ -564,6 +666,17 @@ func (p *Processor) dcx(msb *byte, lsb *byte) {
 	if *lsb == 0xFF {
 		*msb -= 1
 	}
+}
+
+// Exchange register pair HL <-> DE
+func (p *Processor) xchg() {
+	p.dasm("XCHG")
+	tlsb := p.L
+	tmsb := p.H
+	p.L = p.E
+	p.H = p.D
+	p.E = tlsb
+	p.D = tmsb
 }
 
 // Decrease value of register pair by 1 (16-bit)
@@ -765,6 +878,40 @@ func (p *Processor) sbb(reg *byte) {
 	}
 }
 
+// Subtract immediate from accumulator
+func (p *Processor) sui() {
+	p.dasm("SUI")
+	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x1
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0x00FF {
+		p.Carry = true
+	}
+	p.PC += 1
+}
+
+// Subtract immediate from accumulator with borrow
+func (p *Processor) sbi() {
+	p.dasm("SBI")
+	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x1
+	if p.Carry {
+		result += 0x01
+	}
+
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0x00FF {
+		p.Carry = true
+	}
+	p.PC += 1
+}
+
 // Logical AND register or memory with accumulator
 func (p *Processor) ana(reg *byte) {
 	p.dasm("ANA")
@@ -772,9 +919,22 @@ func (p *Processor) ana(reg *byte) {
 
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	// TODO implement auxiliary carry
+	p.AuxiliaryCarry = false
 	p.SetParity(p.A)
 	p.Carry = false
+}
+
+// Logial AND immediate with accumulator
+func (p *Processor) ani() {
+	p.dasm("ANI")
+	p.A &= p.mmu.Memory[p.PC]
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.AuxiliaryCarry = false
+	p.SetParity(p.A)
+	p.Carry = false
+	p.PC += 1
 }
 
 // Logical XOR register or memory with accumulator
@@ -789,9 +949,22 @@ func (p *Processor) xra(reg *byte) {
 	p.Carry = false
 }
 
+// Logical XOR immediate with accumulator
+func (p *Processor) xri() {
+	p.dasm("XRI")
+	p.A ^= p.mmu.Memory[p.PC]
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.AuxiliaryCarry = false
+	p.SetParity(p.A)
+	p.Carry = false
+	p.PC += 1
+}
+
 // Logical OR register or memory with accumulator
 func (p *Processor) ora(reg *byte) {
-	p.dasm("XRA")
+	p.dasm("ORA")
 	p.A |= *reg
 
 	p.SetSign(p.A)
@@ -799,6 +972,19 @@ func (p *Processor) ora(reg *byte) {
 	// TODO implement auxiliary carry
 	p.SetParity(p.A)
 	p.Carry = false
+}
+
+// Logical OR immediate with accumulator
+func (p *Processor) ori() {
+	p.dasm("ORI")
+	p.A |= p.mmu.Memory[p.PC]
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	// TODO implement auxiliary carry
+	p.SetParity(p.A)
+	p.Carry = false
+	p.PC += 1
 }
 
 // Compare register or memory with accumulator
@@ -813,7 +999,21 @@ func (p *Processor) cmp(reg *byte) {
 	if result <= 0xFF {
 		p.Carry = true
 	}
+}
 
+// Compare immediate with accumulator
+func (p *Processor) cpi() {
+	p.dasm("CPI")
+	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x01
+	lsb := byte(result & 0x00FF)
+	p.SetSign(lsb)
+	p.SetZero(lsb)
+	// TODO implement auxiliary carry
+	p.SetParity(lsb)
+	if result <= 0xFF {
+		p.Carry = true
+	}
+	p.PC += 1
 }
 
 // Load Accumulator - load data from the provided address
@@ -873,6 +1073,12 @@ func (p *Processor) lhld() {
 		p.H = p.mmu.Memory[address+1]
 	}
 	p.PC += 2
+}
+
+// Load SP from HL
+func (p *Processor) sphl() {
+	p.dasm("SPHL")
+	p.SP = (uint16(p.H) << 8) | uint16(p.L)
 }
 
 // Decimal Adjust Accumulator
@@ -972,6 +1178,66 @@ func (p *Processor) cz() {
 	}
 }
 
+// Call if not carry
+func (p *Processor) cnc() {
+	p.dasm("CNC")
+	if !p.Carry {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if carry
+func (p *Processor) cc() {
+	p.dasm("CC")
+	if p.Carry {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if parity odd (zero)
+func (p *Processor) cpo() {
+	p.dasm("CPO")
+	if !p.Parity {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if parity even (one)
+func (p *Processor) cpe() {
+	p.dasm("CPE")
+	if p.Parity {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if plus (sign-zero)
+func (p *Processor) cp() {
+	p.dasm("CP")
+	if !p.Sign {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
+// Call if minus (sign-one)
+func (p *Processor) cm() {
+	p.dasm("CM")
+	if p.Sign {
+		p.intCall()
+	} else {
+		p.PC += 2
+	}
+}
+
 // Return instruction
 func (p *Processor) ret() {
 	p.dasm("RET")
@@ -994,6 +1260,54 @@ func (p *Processor) rz() {
 	}
 }
 
+// return if not carry
+func (p *Processor) rnc() {
+	p.dasm("RNC")
+	if !p.Carry {
+		p.intRet()
+	}
+}
+
+// return if carry
+func (p *Processor) rc() {
+	p.dasm("RC")
+	if p.Carry {
+		p.intRet()
+	}
+}
+
+// return if parity odd (zero)
+func (p *Processor) rpo() {
+	p.dasm("RPO")
+	if !p.Parity {
+		p.intRet()
+	}
+}
+
+// return if parity even (one)
+func (p *Processor) rpe() {
+	p.dasm("RPE")
+	if p.Parity {
+		p.intRet()
+	}
+}
+
+// return if plus(sign-zero)
+func (p *Processor) rp() {
+	p.dasm("RP")
+	if !p.Sign {
+		p.intRet()
+	}
+}
+
+// return if minus(sign-one)
+func (p *Processor) rm() {
+	p.dasm("RM")
+	if p.Sign {
+		p.intRet()
+	}
+}
+
 // restart
 func (p *Processor) rst(pos uint16) {
 	p.dasm("RST")
@@ -1007,6 +1321,7 @@ func (p *Processor) rst(pos uint16) {
 	p.PC = address
 }
 
+/* STACK Instruction */
 // push data onto stack
 func (p *Processor) push(msb *byte, lsb *byte) {
 	p.dasm("PUSH")
@@ -1023,6 +1338,73 @@ func (p *Processor) pop(msb *byte, lsb *byte) {
 	p.SP += 2
 }
 
+// push PSW onto stack
+func (p *Processor) pushPSW() {
+	p.dasm("PUSH PSW")
+	p.mmu.Memory[p.SP-1] = p.A
+
+	// assemble flags byte
+	flags := byte(0)
+	if p.Carry {
+		flags |= 0x00000001
+	}
+	if p.Parity {
+		flags |= 0b00000100
+	}
+	if p.AuxiliaryCarry {
+		flags |= 0b00010000
+	}
+	if p.Zero {
+		flags |= 0b01000000
+	}
+	if p.Sign {
+		flags |= 0b10000000
+	}
+	p.mmu.Memory[p.SP-2] = flags
+	p.SP -= 2
+}
+
+// pop data off stack to PSW
+func (p *Processor) popPSW() {
+	p.dasm("POP PSW")
+	flags := p.mmu.Memory[p.SP]
+	p.A = p.mmu.Memory[p.SP+1]
+	p.SP += 2
+
+	//restore flags
+	p.Carry = false
+	p.Parity = false
+	p.AuxiliaryCarry = false
+	p.Zero = false
+	p.Sign = false
+	if flags&0b00000001 > 0 {
+		p.Carry = true
+	}
+	if flags&0b00000100 > 0 {
+		p.Parity = true
+	}
+	if flags&0b00010000 > 0 {
+		p.AuxiliaryCarry = true
+	}
+	if flags&0b01000000 > 0 {
+		p.Zero = true
+	}
+	if flags&0b10000000 > 0 {
+		p.Sign = true
+	}
+}
+
+// Exchange stack HL <-> mem[stack pointer]
+func (p *Processor) xthl() {
+	p.dasm("XTHL")
+	tlsb := p.mmu.Memory[p.SP]
+	tmsb := p.mmu.Memory[p.SP+1]
+	p.mmu.Memory[p.SP] = p.L
+	p.mmu.Memory[p.SP+1] = p.H
+	p.L = tlsb
+	p.H = tmsb
+}
+
 /* JUMP Instruction */
 // internal jump
 func (p *Processor) intJmp() {
@@ -1030,6 +1412,12 @@ func (p *Processor) intJmp() {
 	msb := p.mmu.Memory[p.PC+1]
 
 	p.PC = (uint16(msb) << 8) | uint16(lsb)
+}
+
+// load program counter
+func (p *Processor) pchl() {
+	p.dasm("PCHL")
+	p.PC = (uint16(p.H) << 8) | uint16(p.L)
 }
 
 // jmp instruction
@@ -1043,6 +1431,8 @@ func (p *Processor) jnz() {
 	p.dasm("JNZ")
 	if !p.Zero {
 		p.intJmp()
+	} else {
+		p.PC += 2
 	}
 }
 
@@ -1051,7 +1441,83 @@ func (p *Processor) jz() {
 	p.dasm("JZ")
 	if p.Zero {
 		p.intJmp()
+	} else {
+		p.PC += 2
 	}
+}
+
+// jump if not carry
+func (p *Processor) jnc() {
+	p.dasm("JNC")
+	if !p.Carry {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// jump if carry
+func (p *Processor) jc() {
+	p.dasm("JC")
+	if p.Carry {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// jump if parity odd (zero)
+func (p *Processor) jpo() {
+	p.dasm("JPO")
+	if !p.Parity {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// jump if parity even (one)
+func (p *Processor) jpe() {
+	p.dasm("JPE")
+	if p.Parity {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// jump if plus (sign-zero)
+func (p *Processor) jp() {
+	p.dasm("JP")
+	if !p.Sign {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// jump if minus (sign-one)
+func (p *Processor) jm() {
+	p.dasm("JM")
+	if p.Sign {
+		p.intJmp()
+	} else {
+		p.PC += 2
+	}
+}
+
+// in - read from specified input device to accumulator
+// TODO - implementation
+func (p *Processor) in() {
+	p.dasm("IN")
+	p.PC += 1
+}
+
+// out - send accumulator's content to the specified output device
+// TODO - implementation
+func (p *Processor) out() {
+	p.dasm("OUT")
+	p.PC += 1
 }
 
 // Unimplemented
