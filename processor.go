@@ -623,14 +623,23 @@ func (p *Processor) Run() {
 	}
 
 	if p.DebugMode {
-		fmt.Printf("A=%X,D=%X,C=%v,P=%v,S=%v,Z=%v\n\n",
-			p.A,
-			p.D,
-			p.Carry,
-			p.Parity,
-			p.Sign,
-			p.Zero)
+		p.PrintStatus()
 	}
+}
+
+// debug print status
+func (p *Processor) PrintStatus() {
+	fmt.Printf("(A=%02X,H=%02X%02X,B=%02X%02X,D=%02X%02X,SP=%04X,PC=%04X,FLAG=%08b)\n\n",
+		p.A,
+		p.H,
+		p.L,
+		p.B,
+		p.C,
+		p.D,
+		p.E,
+		p.SP,
+		p.PC,
+		p.getFlags())
 }
 
 // Instruction
@@ -1427,11 +1436,8 @@ func (p *Processor) pop(msb *byte, lsb *byte) {
 	p.SP += 2
 }
 
-// push PSW onto stack
-func (p *Processor) pushPSW() {
-	p.dasm("PUSH PSW")
-	p.mmu.Memory[p.SP-1] = p.A
-
+// get flags
+func (p *Processor) getFlags() byte {
 	// assemble flags byte
 	flags := byte(0)
 	if p.Carry {
@@ -1449,7 +1455,14 @@ func (p *Processor) pushPSW() {
 	if p.Sign {
 		flags |= 0b10000000
 	}
-	p.mmu.Memory[p.SP-2] = flags
+	return flags
+}
+
+// push PSW onto stack
+func (p *Processor) pushPSW() {
+	p.dasm("PUSH PSW")
+	p.mmu.Memory[p.SP-1] = p.A
+	p.mmu.Memory[p.SP-2] = p.getFlags()
 	p.SP -= 2
 }
 
@@ -1666,6 +1679,7 @@ func (p *Processor) SetAuxiliaryCarry(result uint16, op1 uint8, op2 uint8, isAdd
 
 // DEBUGGER
 // disassemble helper
+// TODO - add operands detail
 func (p *Processor) dasm(opcode string) {
 
 	if !p.DebugMode {

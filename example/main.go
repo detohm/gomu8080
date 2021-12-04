@@ -31,7 +31,7 @@ func main() {
 	for !p.IsHalt {
 
 		if p.DebugMode {
-			fmt.Printf("pc: %X ", p.PC)
+			fmt.Printf("PC=%04X ", p.PC)
 		}
 
 		p.Run()
