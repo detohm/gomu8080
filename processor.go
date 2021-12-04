@@ -51,10 +51,11 @@ func NewProcessor(mmu *MMU, debugMode bool) *Processor {
 func (p *Processor) Run() {
 
 	opcode := p.mmu.Memory[p.PC]
-	p.PC += 1
 
 	// TODO - validate address bound
 	address := (uint16(p.H) << 8) | uint16(p.L)
+
+	p.PC += 1
 
 	switch opcode {
 	/* 0x */
@@ -94,7 +95,7 @@ func (p *Processor) Run() {
 	case 0x10:
 		p.nop()
 	case 0x11:
-		p.lxi(&p.H, &p.L)
+		p.lxi(&p.D, &p.E)
 	case 0x12:
 		p.stax(&p.D, &p.E)
 	case 0x13:
@@ -620,6 +621,16 @@ func (p *Processor) Run() {
 	default:
 		p.unimplemented()
 	}
+
+	if p.DebugMode {
+		fmt.Printf("A=%X,D=%X,C=%v,P=%v,S=%v,Z=%v\n\n",
+			p.A,
+			p.D,
+			p.Carry,
+			p.Parity,
+			p.Sign,
+			p.Zero)
+	}
 }
 
 // Instruction
@@ -688,25 +699,27 @@ func (p *Processor) dcx16(reg *uint16) {
 // Increase value of 8-bit register by 1
 func (p *Processor) inr(reg *byte) {
 	p.dasm("INR")
+	op1 := *reg
 	result16 := uint16(*reg) + 1
 	*reg = byte(result16 & 0x00ff)
 
 	p.SetZero(*reg)
 	p.SetSign(*reg)
 	p.SetParity(*reg)
-	p.SetAuxiliaryCarry(result16)
+	p.SetAuxiliaryCarry(result16, op1, 1, true)
 }
 
 // Decrease value of 8-bit register by 1
 func (p *Processor) dcr(reg *byte) {
 	p.dasm("DCR")
+	op1 := *reg
 	result16 := uint16(*reg) - 1
 	*reg = byte(result16 & 0xff)
 
 	p.SetZero(*reg)
 	p.SetSign(*reg)
 	p.SetParity(*reg)
-	p.SetAuxiliaryCarry(result16)
+	p.SetAuxiliaryCarry(result16, op1, 0x01, false)
 }
 
 // Move immediate data
@@ -764,13 +777,16 @@ func (p *Processor) rar() {
 // Add register or memory to accumulator
 func (p *Processor) add(reg *byte) {
 	p.dasm("ADD")
-	result := uint16(p.A) + uint16(*reg)
+	op1 := p.A
+	op2 := *reg
+
+	result := uint16(op1) + uint16(op2)
 	lsb := byte(result & 0x00FF)
 	p.A = lsb
 
 	p.SetSign(lsb)
 	p.SetZero(lsb)
-	// TODO implement auxiliary carry
+	p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(lsb)
 	p.Carry = result > 0xFF
 }
@@ -778,7 +794,10 @@ func (p *Processor) add(reg *byte) {
 // Add register or memory to accumulator with carry
 func (p *Processor) adc(reg *byte) {
 	p.dasm("ADC")
-	result := uint16(p.A) + uint16(*reg)
+	op1 := p.A
+	op2 := *reg
+
+	result := uint16(op1) + uint16(op2)
 	if p.Carry {
 		result += 0x01
 	}
@@ -787,7 +806,7 @@ func (p *Processor) adc(reg *byte) {
 
 	p.SetSign(lsb)
 	p.SetZero(lsb)
-	// TODO implement auxiliary carry
+	p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(lsb)
 	p.Carry = result > 0xFF
 }
@@ -795,31 +814,37 @@ func (p *Processor) adc(reg *byte) {
 // Add Immediate to Accumulator
 func (p *Processor) adi() {
 	p.dasm("ADI")
-	result := uint16(p.A) + uint16(p.mmu.Memory[p.PC])
-	lsb := byte(result & 0x00FF)
+	op1 := p.A
+	op2 := p.mmu.Memory[p.PC]
+	result := uint16(op1) + uint16(op2)
+	p.A = byte(result & 0x00FF)
 
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, true)
+	p.SetParity(p.A)
 	p.Carry = result > 0xFF
+	p.PC += 1
 }
 
 // Add Immediate to Accumulator with carry
 func (p *Processor) aci() {
 	p.dasm("ACI")
-	result := uint16(p.A) + uint16(p.mmu.Memory[p.PC])
+	op1 := p.A
+	op2 := p.mmu.Memory[p.PC]
+	result := uint16(op1) + uint16(op2)
 	if p.Carry {
 		result += 0x01
 	}
 
-	lsb := byte(result & 0x00FF)
+	p.A = byte(result & 0x00FF)
 
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, true)
+	p.SetParity(p.A)
 	p.Carry = result > 0xFF
+	p.PC += 1
 }
 
 // Double Add - add specified register pair to HL
@@ -848,13 +873,16 @@ func (p *Processor) dad16(reg *uint16) {
 // Subtract register or memory from accumulator
 func (p *Processor) sub(reg *byte) {
 	p.dasm("SUB")
-	result := uint16(p.A) + uint16(^*reg) + 0x1
+	op1 := p.A
+	op2 := *reg
+	result := uint16(op1) + uint16(^op2) + 0x1
 
-	lsb := byte(result & 0x00FF)
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	p.A = byte(result & 0x00FF)
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, false)
+	p.SetParity(p.A)
+	p.Carry = false
 	if result <= 0x00FF {
 		p.Carry = true
 	}
@@ -863,16 +891,19 @@ func (p *Processor) sub(reg *byte) {
 // Subtract register or memory from accumulator with borrow
 func (p *Processor) sbb(reg *byte) {
 	p.dasm("SBB")
-	result := uint16(p.A) + uint16(^*reg) + 0x1
+	op1 := p.A
+	op2 := *reg
+	result := uint16(op1) + uint16(^op2) + 0x1
 	if p.Carry {
-		result += 0x01
+		result += ^uint16(0x01) + 0x1
 	}
 
-	lsb := byte(result & 0x00FF)
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	p.A = byte(result & 0x00FF)
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, false)
+	p.SetParity(p.A)
+	p.Carry = false
 	if result <= 0x00FF {
 		p.Carry = true
 	}
@@ -881,12 +912,17 @@ func (p *Processor) sbb(reg *byte) {
 // Subtract immediate from accumulator
 func (p *Processor) sui() {
 	p.dasm("SUI")
-	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x1
-	lsb := byte(result & 0x00FF)
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	op1 := p.A
+	op2 := p.mmu.Memory[p.PC]
+
+	result := uint16(op1) + uint16(^op2) + 0x1
+	p.A = byte(result & 0x00FF)
+
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, false)
+	p.SetParity(p.A)
+	p.Carry = false
 	if result <= 0x00FF {
 		p.Carry = true
 	}
@@ -896,16 +932,20 @@ func (p *Processor) sui() {
 // Subtract immediate from accumulator with borrow
 func (p *Processor) sbi() {
 	p.dasm("SBI")
-	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x1
+	op1 := p.A
+	op2 := p.mmu.Memory[p.PC]
+
+	result := uint16(op1) + uint16(^op2) + 0x1
 	if p.Carry {
-		result += 0x01
+		result += ^uint16(0x01) + 0x1
 	}
 
-	lsb := byte(result & 0x00FF)
-	p.SetSign(lsb)
-	p.SetZero(lsb)
-	// TODO implement auxiliary carry
-	p.SetParity(lsb)
+	p.A = byte(result & 0x00FF)
+	p.SetSign(p.A)
+	p.SetZero(p.A)
+	p.SetAuxiliaryCarry(result, op1, op2, false)
+	p.SetParity(p.A)
+	p.Carry = false
 	if result <= 0x00FF {
 		p.Carry = true
 	}
@@ -996,6 +1036,7 @@ func (p *Processor) cmp(reg *byte) {
 	p.SetZero(lsb)
 	// TODO implement auxiliary carry
 	p.SetParity(lsb)
+	p.Carry = false
 	if result <= 0xFF {
 		p.Carry = true
 	}
@@ -1010,6 +1051,7 @@ func (p *Processor) cpi() {
 	p.SetZero(lsb)
 	// TODO implement auxiliary carry
 	p.SetParity(lsb)
+	p.Carry = false
 	if result <= 0xFF {
 		p.Carry = true
 	}
@@ -1086,17 +1128,23 @@ func (p *Processor) daa() {
 	p.dasm("DAA")
 	// divide 4-bit
 	lsb4 := p.A & 0x0F
-	msb4 := p.A >> 4
+	// msb4 := p.A >> 4
 
 	if lsb4 > 0x09 || p.AuxiliaryCarry {
-		// result := uint16(lsb4) + uint16(0x06)
 		p.A += 0x06
+		p.AuxiliaryCarry = true
 	}
 
+	msb4 := p.A >> 4
 	if msb4 > 0x09 || p.Carry {
 		p.A += (0x06 << 4)
+		p.Carry = true
 	}
-	// TODO - implement logic to update flags
+
+	p.SetZero(p.A)
+	p.SetSign(p.A)
+	p.SetParity(p.A)
+
 }
 
 // Complement Accumulator
@@ -1127,8 +1175,25 @@ func (p *Processor) hlt() {
 // Internal Call subroutine
 func (p *Processor) intCall() {
 
-	address := (uint16(p.PC+1) << 8) | uint16(p.PC)
+	address := (uint16(p.mmu.Memory[p.PC+1]) << 8)
+	address |= uint16(p.mmu.Memory[p.PC])
 	returnAddress := p.PC + 2
+
+	// Inject emulated CP/M routines
+	if address == 0x0000 {
+		p.IsHalt = true
+		return
+	}
+	if address == 0x0005 {
+		if p.C == 0x02 {
+			p.BdosConsoleOutput()
+		}
+		if p.C == 0x09 {
+			p.BdosWriteStr()
+		}
+		p.PC += 2
+		return
+	}
 
 	// push return address into stack
 	// msb
@@ -1143,9 +1208,33 @@ func (p *Processor) intCall() {
 	p.PC = address
 }
 
+// for debugging purpose
+/*
+  Emulate BDOS in CP/M for message output routine
+  C_WRITESTR - Output string
+  C=9, DE=address of string
+*/
+func (p *Processor) BdosWriteStr() {
+
+	address := (uint16(p.D) << 8) | uint16(p.E)
+	for p.mmu.Memory[address] != '$' {
+		fmt.Printf("%c", p.mmu.Memory[address])
+		address += 1
+	}
+	fmt.Println()
+}
+
+/*
+  Emulate BDOS in CP/M for character output routine
+  C_WRITE - Output character
+  C=2, E=ascii character
+*/
+func (p *Processor) BdosConsoleOutput() {
+	fmt.Printf("%c", p.E)
+}
+
 // Return from subroutine
 func (p *Processor) intRet() {
-	p.dasm("RET")
 	p.PC = uint16(p.mmu.Memory[p.SP+1]) << 8
 	p.PC |= uint16(p.mmu.Memory[p.SP])
 
@@ -1411,7 +1500,15 @@ func (p *Processor) intJmp() {
 	lsb := p.mmu.Memory[p.PC]
 	msb := p.mmu.Memory[p.PC+1]
 
-	p.PC = (uint16(msb) << 8) | uint16(lsb)
+	address := (uint16(msb) << 8) | uint16(lsb)
+
+	// inject warm boot from CP/M
+	if address == 0x0000 {
+		p.IsHalt = true
+		return
+	}
+
+	p.PC = address
 }
 
 // load program counter
@@ -1558,9 +1655,13 @@ func (p *Processor) SetParity(result byte) {
 
 	p.Parity = oneCount%2 == 0
 }
-func (p *Processor) SetAuxiliaryCarry(result uint16) {
-	// TODO - implement ac calculation
+func (p *Processor) SetAuxiliaryCarry(result uint16, op1 uint8, op2 uint8, isAdd bool) {
+
 	p.AuxiliaryCarry = false
+	carryBits := result ^ uint16(op1) ^ uint16(op2)
+	p.AuxiliaryCarry = carryBits&(0x01<<4) > 0
+
+	// TODO - confirm on subtraction arithmetic
 }
 
 // DEBUGGER
@@ -1571,5 +1672,6 @@ func (p *Processor) dasm(opcode string) {
 		return
 	}
 
-	fmt.Printf("%s\n", opcode)
+	fmt.Printf("%s ", opcode)
+
 }
