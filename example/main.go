@@ -39,4 +39,10 @@ func main() {
 			time.Sleep(5 * time.Millisecond)
 		}
 	}
+	// game := gomu8080.NewGame()
+	// ebiten.SetWindowSize(640, 480)
+	// ebiten.SetWindowTitle("Hello, World!")
+	// if err := ebiten.RunGame(game); err != nil {
+	// 	log.Fatal(err)
+	// }
 }

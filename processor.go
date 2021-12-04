@@ -629,7 +629,7 @@ func (p *Processor) Run() {
 
 // debug print status
 func (p *Processor) PrintStatus() {
-	fmt.Printf("(A=%02X,H=%02X%02X,B=%02X%02X,D=%02X%02X,SP=%04X,PC=%04X,FLAG=%08b)\n\n",
+	fmt.Printf("(A=%02X,H=%02X%02X,B=%02X%02X,D=%02X%02X,SP=%04X,PC=%04X,FLAG=%08b)\n",
 		p.A,
 		p.H,
 		p.L,
@@ -822,9 +822,12 @@ func (p *Processor) adc(reg *byte) {
 
 // Add Immediate to Accumulator
 func (p *Processor) adi() {
-	p.dasm("ADI")
+
 	op1 := p.A
 	op2 := p.mmu.Memory[p.PC]
+
+	p.dasm(fmt.Sprintf("ADI %02X", op2))
+
 	result := uint16(op1) + uint16(op2)
 	p.A = byte(result & 0x00FF)
 
@@ -838,9 +841,11 @@ func (p *Processor) adi() {
 
 // Add Immediate to Accumulator with carry
 func (p *Processor) aci() {
-	p.dasm("ACI")
 	op1 := p.A
 	op2 := p.mmu.Memory[p.PC]
+
+	p.dasm(fmt.Sprintf("ACI %02X", op2))
+
 	result := uint16(op1) + uint16(op2)
 	if p.Carry {
 		result += 0x01
@@ -920,9 +925,11 @@ func (p *Processor) sbb(reg *byte) {
 
 // Subtract immediate from accumulator
 func (p *Processor) sui() {
-	p.dasm("SUI")
+
 	op1 := p.A
 	op2 := p.mmu.Memory[p.PC]
+
+	p.dasm(fmt.Sprintf("SUI %02X", op2))
 
 	result := uint16(op1) + uint16(^op2) + 0x1
 	p.A = byte(result & 0x00FF)
@@ -940,9 +947,11 @@ func (p *Processor) sui() {
 
 // Subtract immediate from accumulator with borrow
 func (p *Processor) sbi() {
-	p.dasm("SBI")
+
 	op1 := p.A
 	op2 := p.mmu.Memory[p.PC]
+
+	p.dasm(fmt.Sprintf("SBI %02X", op2))
 
 	result := uint16(op1) + uint16(^op2) + 0x1
 	if p.Carry {
@@ -1076,9 +1085,11 @@ func (p *Processor) ldax(msb *byte, lsb *byte) {
 
 // Load accumulator direct from the operand address to A
 func (p *Processor) lda() {
-	p.dasm("LDA")
 	address := uint16(p.mmu.Memory[p.PC+1]) << 8
 	address |= uint16(p.mmu.Memory[p.PC])
+
+	p.dasm(fmt.Sprintf("LDA %04X", address))
+
 	p.A = p.mmu.Memory[address]
 	p.PC += 2
 }
@@ -1685,7 +1696,6 @@ func (p *Processor) dasm(opcode string) {
 	if !p.DebugMode {
 		return
 	}
-
 	fmt.Printf("%s ", opcode)
 
 }
