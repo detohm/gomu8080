@@ -118,8 +118,9 @@ func (p *Processor) sbi() {
 
 // Logial AND immediate with accumulator
 func (p *Processor) ani() {
-	p.dasm("ANI")
-	p.A &= p.mmu.Memory[p.PC]
+	op1 := p.mmu.Memory[p.PC]
+	p.dasm(fmt.Sprintf("ANI %02X", op1))
+	p.A &= op1
 
 	p.SetSign(p.A)
 	p.SetZero(p.A)
@@ -131,8 +132,9 @@ func (p *Processor) ani() {
 
 // Logical XOR immediate with accumulator
 func (p *Processor) xri() {
-	p.dasm("XRI")
-	p.A ^= p.mmu.Memory[p.PC]
+	op1 := p.mmu.Memory[p.PC]
+	p.dasm(fmt.Sprintf("XRI %02X", op1))
+	p.A ^= op1
 
 	p.SetSign(p.A)
 	p.SetZero(p.A)
@@ -144,8 +146,9 @@ func (p *Processor) xri() {
 
 // Logical OR immediate with accumulator
 func (p *Processor) ori() {
-	p.dasm("ORI")
-	p.A |= p.mmu.Memory[p.PC]
+	op1 := p.mmu.Memory[p.PC]
+	p.dasm(fmt.Sprintf("ORI %02X", op1))
+	p.A |= op1
 
 	p.SetSign(p.A)
 	p.SetZero(p.A)
@@ -157,8 +160,9 @@ func (p *Processor) ori() {
 
 // Compare immediate with accumulator
 func (p *Processor) cpi() {
-	p.dasm("CPI")
-	result := uint16(p.A) + uint16(^p.mmu.Memory[p.PC]) + 0x01
+	op1 := p.mmu.Memory[p.PC]
+	p.dasm(fmt.Sprintf("CPI %02X", op1))
+	result := uint16(p.A) + uint16(^op1) + 0x01
 	lsb := byte(result & 0x00FF)
 	p.SetSign(lsb)
 	p.SetZero(lsb)

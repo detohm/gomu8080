@@ -155,7 +155,7 @@ func (p *Processor) rst(pos uint16) {
 	lsb := byte(p.PC & 0x00FF)
 	p.mmu.Memory[p.SP-1] = msb
 	p.mmu.Memory[p.SP-2] = lsb
-	p.SP += 2
+	p.SP -= 2
 
 	address := uint16(pos << 3)
 	p.PC = address
@@ -201,12 +201,14 @@ func (p *Processor) out() {
 func (p *Processor) ei() {
 	p.dasm("EI")
 	// TODO - implementation
+	p.IsInteruptsEnabled = true
 }
 
 // Disable Interuption
 func (p *Processor) di() {
 	p.dasm("DI")
 	// TODO - implementation
+	p.IsInteruptsEnabled = false
 }
 
 // Unimplemented

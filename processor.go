@@ -39,6 +39,9 @@ type Processor struct {
 
 	// processor state
 	IsHalt bool
+
+	// enable interupt
+	IsInteruptsEnabled bool
 }
 
 func NewProcessor(mmu *MMU, debugMode bool) *Processor {
