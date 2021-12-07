@@ -30,6 +30,10 @@ type Processor struct {
 	Parity         bool
 	Carry          bool
 	AuxiliaryCarry bool
+	// unused flag (must as for cpu pre test check in psw push pop)
+	FlagBit1 bool
+	FlagBit3 bool
+	FlagBit5 bool
 
 	// MMU
 	mmu *MMU
@@ -673,6 +677,7 @@ func (p *Processor) SetAuxiliaryCarry(result uint16, op1 uint8, op2 uint8, isAdd
 	p.AuxiliaryCarry = carryBits&(0x01<<4) > 0
 
 	// TODO - confirm on subtraction arithmetic
+
 }
 
 // DEBUGGER

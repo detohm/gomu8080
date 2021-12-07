@@ -52,7 +52,7 @@ func (p *Processor) BdosWriteStr() {
 		fmt.Printf("%c", p.mmu.Memory[address])
 		address += 1
 	}
-	fmt.Println()
+	// fmt.Println()
 }
 
 /*

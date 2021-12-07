@@ -34,7 +34,11 @@ func main() {
 		for !p.IsHalt {
 
 			if p.DebugMode {
-				fmt.Printf("PC=%04X ", p.PC)
+				fmt.Printf("PC=%04X OP=%02X %02X %02X | ",
+					p.PC,
+					mmu.Memory[p.PC],
+					mmu.Memory[p.PC+1],
+					mmu.Memory[p.PC+2]) // TODO - bound check
 			}
 
 			p.Run()

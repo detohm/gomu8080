@@ -12,9 +12,14 @@ func (p *Processor) add(reg *byte) {
 	lsb := byte(result & 0x00FF)
 	p.A = lsb
 
+	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((lsb & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = addHalfCarryTable[index]
+
 	p.SetSign(lsb)
 	p.SetZero(lsb)
-	p.SetAuxiliaryCarry(result, op1, op2, true)
+	// p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(lsb)
 	p.Carry = result > 0xFF
 }
@@ -32,9 +37,14 @@ func (p *Processor) adc(reg *byte) {
 	lsb := byte(result & 0x00FF)
 	p.A = lsb
 
+	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((lsb & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = addHalfCarryTable[index]
+
 	p.SetSign(lsb)
 	p.SetZero(lsb)
-	p.SetAuxiliaryCarry(result, op1, op2, true)
+	// p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(lsb)
 	p.Carry = result > 0xFF
 }
@@ -44,17 +54,27 @@ func (p *Processor) sub(reg *byte) {
 	p.dasm("SUB")
 	op1 := p.A
 	op2 := *reg
-	result := uint16(op1) + uint16(^op2) + 0x1
+	// result := uint16(op1) + uint16(^op2) + 0x1
+	result := uint16(op1) - uint16(^op2)
 
 	p.A = byte(result & 0x00FF)
+
+	var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = subHalfCarryTable[index]
+
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, false)
+	// p.SetAuxiliaryCarry(result, op1, op2, false)
 	p.SetParity(p.A)
 	p.Carry = false
-	if result <= 0x00FF {
+	// if result <= 0x00FF {
+	// 	p.Carry = true
+	// }
+	if result&0x100 > 0 {
 		p.Carry = true
 	}
+
 }
 
 // Subtract register or memory from accumulator with borrow
@@ -62,18 +82,30 @@ func (p *Processor) sbb(reg *byte) {
 	p.dasm("SBB")
 	op1 := p.A
 	op2 := *reg
-	result := uint16(op1) + uint16(^op2) + 0x1
+	// result := uint16(op1) + uint16(^op2) + 0x1
+	// if p.Carry {
+	// 	result += ^uint16(0x01) + 0x1
+	// }
+	result := uint16(op1) - uint16(op2)
 	if p.Carry {
-		result += ^uint16(0x01) + 0x1
+		result -= 1
 	}
 
 	p.A = byte(result & 0x00FF)
+
+	var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = subHalfCarryTable[index]
+
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, false)
+	// p.SetAuxiliaryCarry(result, op1, op2, false)
 	p.SetParity(p.A)
 	p.Carry = false
-	if result <= 0x00FF {
+	// if result <= 0x00FF {
+	// 	p.Carry = true
+	// }
+	if result&0x100 > 0 {
 		p.Carry = true
 	}
 }

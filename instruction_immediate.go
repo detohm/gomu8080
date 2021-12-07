@@ -39,9 +39,13 @@ func (p *Processor) adi() {
 	result := uint16(op1) + uint16(op2)
 	p.A = byte(result & 0x00FF)
 
+	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = addHalfCarryTable[index]
+
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, true)
+	// p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(p.A)
 	p.Carry = result > 0xFF
 	p.PC += 1
@@ -61,9 +65,13 @@ func (p *Processor) aci() {
 
 	p.A = byte(result & 0x00FF)
 
+	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = addHalfCarryTable[index]
+
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, true)
+	// p.SetAuxiliaryCarry(result, op1, op2, true)
 	p.SetParity(p.A)
 	p.Carry = result > 0xFF
 	p.PC += 1
@@ -77,17 +85,26 @@ func (p *Processor) sui() {
 
 	p.dasm(fmt.Sprintf("SUI %02X", op2))
 
-	result := uint16(op1) + uint16(^op2) + 0x1
+	// result := uint16(op1) + uint16(^op2) + 0x1
+	result := uint16(op1) - uint16(op2)
 	p.A = byte(result & 0x00FF)
+
+	var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = subHalfCarryTable[index]
 
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, false)
+	// p.SetAuxiliaryCarry(result, op1, op2, false)
 	p.SetParity(p.A)
 	p.Carry = false
-	if result <= 0x00FF {
+	// if result <= 0x00FF {
+	// 	p.Carry = true
+	// }
+	if result&0x100 > 0 {
 		p.Carry = true
 	}
+
 	p.PC += 1
 }
 
@@ -99,18 +116,30 @@ func (p *Processor) sbi() {
 
 	p.dasm(fmt.Sprintf("SBI %02X", op2))
 
-	result := uint16(op1) + uint16(^op2) + 0x1
+	// result := uint16(op1) + uint16(^op2) + 0x1
+	// if p.Carry {
+	// 	result += ^uint16(0x01) + 0x1
+	// }
+	result := uint16(op1) - uint16(op2)
 	if p.Carry {
-		result += ^uint16(0x01) + 0x1
+		result -= 1
 	}
 
 	p.A = byte(result & 0x00FF)
+
+	var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
+	index := (((op1 & 0x88) >> 1) | ((op2 & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = subHalfCarryTable[index]
+
 	p.SetSign(p.A)
 	p.SetZero(p.A)
-	p.SetAuxiliaryCarry(result, op1, op2, false)
+	// p.SetAuxiliaryCarry(result, op1, op2, false)
 	p.SetParity(p.A)
 	p.Carry = false
-	if result <= 0x00FF {
+	// if result <= 0x00FF {
+	// 	p.Carry = true
+	// }
+	if result&0x100 > 0 {
 		p.Carry = true
 	}
 	p.PC += 1

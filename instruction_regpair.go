@@ -55,6 +55,18 @@ func (p *Processor) popPSW() {
 	if flags&0b10000000 > 0 {
 		p.Sign = true
 	}
+
+	// update unuse flags
+	if flags&0b00000010 > 0 {
+		p.FlagBit1 = true
+	}
+	if flags&0b00001000 > 0 {
+		p.FlagBit3 = true
+	}
+	if flags&0b00100000 > 0 {
+		p.FlagBit5 = true
+	}
+
 }
 
 // Double Add - add specified register pair to HL
