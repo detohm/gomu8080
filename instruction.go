@@ -11,42 +11,43 @@ func (p *Processor) nop() {
 func (p *Processor) inr(reg *byte) {
 	p.dasm("INR")
 
-	result16 := uint16(*reg) + 1
-	result8 := byte(result16 & 0x00FF)
+	// result16 := uint16(*reg) + 1
+	// result8 := byte(result16 & 0x00FF)
 
-	// p.SetAuxiliaryCarry(result16, op1, 1, true)
-	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+	// var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
 
-	index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
-	p.AuxiliaryCarry = addHalfCarryTable[index]
+	// index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
+	// p.AuxiliaryCarry = addHalfCarryTable[index]
 
-	*reg = byte(result16 & 0x00ff)
+	// *reg = byte(result16 & 0x00ff)
 
-	p.SetZero(*reg)
-	p.SetSign(*reg)
-	p.SetParity(*reg)
+	// p.SetZero(*reg)
+	// p.SetSign(*reg)
+	// p.SetParity(*reg)
+	p.SetFlagsAdd(*reg, 1, 0, 3) // update only ac
+	*reg += 1
 
 }
 
 // Decrease value of 8-bit register by 1
 func (p *Processor) dcr(reg *byte) {
 	p.dasm("DCR")
-	//op1 := *reg
-	// result16 := uint16(*reg) + (1 ^ uint16(0x01)) + 0x01
-	// result16 := uint16(*reg) - 1
-	result16 := uint16(*reg) + (uint16(0xFFFF) ^ uint16(0x01)) + 0x01
-	result8 := byte(result16 & 0xFF)
 
-	var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
-	index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
-	p.AuxiliaryCarry = subHalfCarryTable[index]
+	// result16 := uint16(*reg) + (uint16(0xFFFF) ^ uint16(0x01)) + 0x01
+	// result8 := byte(result16 & 0xFF)
 
-	*reg = byte(result16 & 0xff)
+	// var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
+	// index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
+	// p.AuxiliaryCarry = subHalfCarryTable[index]
 
-	p.SetZero(*reg)
-	p.SetSign(*reg)
-	p.SetParity(*reg)
-	//p.SetAuxiliaryCarry(result16, op1, 0x01, false)
+	// *reg = byte(result16 & 0xff)
+
+	// p.SetZero(*reg)
+	// p.SetSign(*reg)
+	// p.SetParity(*reg)
+	p.SetFlagsSub(*reg, 1, 0, 3) // update ac only
+	*reg -= 1
+
 }
 
 // Move Instruction - move data from src to dst
@@ -120,23 +121,43 @@ func (p *Processor) lhld() {
 func (p *Processor) daa() {
 	p.dasm("DAA")
 	// divide 4-bit
-	lsb4 := p.A & 0x0F
+	// lsb4 := p.A & 0x0F
+
+	// if lsb4 > 0x09 || p.AuxiliaryCarry {
+	// 	p.A += 0x06
+	// 	p.AuxiliaryCarry = true
+	// }
+
 	// msb4 := p.A >> 4
+	// if msb4 > 0x09 || p.Carry {
+	// 	p.A += (0x06 << 4)
+	// 	p.Carry = true
+	// }
 
-	if lsb4 > 0x09 || p.AuxiliaryCarry {
-		p.A += 0x06
-		p.AuxiliaryCarry = true
+	carry := p.Carry
+	add := uint8(0)
+	if (p.A&0x0F) > 0x09 || p.AuxiliaryCarry {
+		add += 0x06
 	}
 
-	msb4 := p.A >> 4
-	if msb4 > 0x09 || p.Carry {
-		p.A += (0x06 << 4)
-		p.Carry = true
+	if (p.A>>4) > 0x09 || ((p.A>>4) >= 9 && p.A&0x0F > 9) || p.Carry {
+		add += 0x60
+		carry = true
 	}
+
+	op1 := p.A
+	result := uint16(op1) + uint16(add)
+	p.A = byte(result & 0x00FF)
+
+	var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
+	index := (((op1 & 0x88) >> 1) | ((add & 0x88) >> 2) | ((p.A & 0x88) >> 3)) & 0x7
+	p.AuxiliaryCarry = addHalfCarryTable[index]
 
 	p.SetZero(p.A)
 	p.SetSign(p.A)
 	p.SetParity(p.A)
+
+	p.Carry = carry
 
 }
 

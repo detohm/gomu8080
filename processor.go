@@ -46,13 +46,78 @@ type Processor struct {
 
 	// enable interupt
 	IsInteruptsEnabled bool
+
+	// pre calculation for zsp flags
+	ZSP [0x100]uint8
 }
 
 func NewProcessor(mmu *MMU, debugMode bool) *Processor {
 	p := &Processor{}
 	p.mmu = mmu
 	p.DebugMode = debugMode
+	initZSPTable(p)
 	return p
+}
+
+func initZSPTable(p *Processor) {
+
+	for i := 0; i <= 0xFF; i++ {
+		if i == 0 {
+			p.ZSP[i] |= 0x01
+		}
+		if i>>7&0x1 > 0 {
+			p.ZSP[i] |= 0x02
+		}
+
+		oneCount := 0
+		for b := 0; b < 8; b++ {
+
+			if (i>>b)&0x01 == 0x01 {
+				oneCount += 1
+			}
+		}
+		if oneCount%2 == 0 {
+			p.ZSP[i] |= 0x04
+		}
+	}
+}
+
+func (p *Processor) SetZSP(value uint8) {
+	p.Zero = (p.ZSP[value]>>0)&0x01 > 0
+	p.Sign = (p.ZSP[value]>>1)&0x01 > 0
+	p.Parity = (p.ZSP[value]>>2)&0x01 > 0
+}
+
+func (p *Processor) SetFlagsAdd(op1 uint8, op2 uint8, carry uint8, mode uint8) {
+	result := op1 + op2 + carry
+	switch mode {
+	case 0: // reset
+		p.Carry = false
+		p.AuxiliaryCarry = false
+	case 1: // both carry and auxCarry
+		p.Carry = p.GetCarry(op1, op2, carry, 8)
+		p.AuxiliaryCarry = p.GetCarry(op1, op2, carry, 4)
+	case 2: // only carry
+		p.Carry = p.GetCarry(op1, op2, carry, 8)
+	case 3: // only auxCarry
+		p.AuxiliaryCarry = p.GetCarry(op1, op2, carry, 4)
+	}
+	p.SetZSP(result)
+}
+
+func (p *Processor) SetFlagsSub(op1 uint8, op2 uint8, carry uint8, mode uint8) {
+	p.SetFlagsAdd(op1, uint8(0xFF)^op2, 1-carry, mode)
+
+	switch mode {
+	case 1:
+		p.Carry = !p.Carry
+	}
+}
+
+func (p *Processor) GetCarry(op1 uint8, op2 uint8, carry uint8, bit uint8) bool {
+	result := uint16(op1) + uint16(op2) + uint16(carry)
+	newCarry := result ^ uint16(op1) ^ uint16(op2)
+	return (newCarry & uint16(0x1<<bit)) != 0
 }
 
 func (p *Processor) Run() {
