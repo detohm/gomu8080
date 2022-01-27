@@ -56,6 +56,7 @@ func NewProcessor(mmu *MMU, debugMode bool) *Processor {
 	p.mmu = mmu
 	p.DebugMode = debugMode
 	initZSPTable(p)
+	// p.FlagBit1 = true
 	return p
 }
 

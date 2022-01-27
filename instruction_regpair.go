@@ -95,10 +95,14 @@ func (p *Processor) dad16(reg *uint16) {
 // Increase value of register pair by 1
 func (p *Processor) inx(msb *byte, lsb *byte) {
 	p.dasm("INX")
-	*lsb += 1
-	if *lsb == 0 {
-		*msb += 1
-	}
+	// *lsb += 1
+	// if *lsb == 0 {
+	// 	*msb += 1
+	// }
+	result := (uint16(*msb) << 8) | uint16(*lsb)
+	result += 1
+	*msb = byte(result >> 8)
+	*lsb = byte(result & 0x00FF)
 }
 
 // Increase value of register pair by 1 (16-bit input)
@@ -110,10 +114,14 @@ func (p *Processor) inx16(reg *uint16) {
 // Decrease value of register pair by 1
 func (p *Processor) dcx(msb *byte, lsb *byte) {
 	p.dasm("DCX")
-	*lsb -= 1
-	if *lsb == 0xFF {
-		*msb -= 1
-	}
+	// *lsb -= 1
+	// if *lsb == 0xFF {
+	// 	*msb -= 1
+	// }
+	result := (uint16(*msb) << 8) | uint16(*lsb)
+	result -= 1
+	*msb = byte(result >> 8)
+	*lsb = byte(result & 0x00FF)
 }
 
 // Decrease value of register pair by 1 (16-bit)

@@ -52,34 +52,38 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	instructionPerFrame := 1000
 
-	instructionPerFrame := 4000
-
-	// preprocess
-	// now := time.Now().UnixMicro()
-
-	for i := 0; i < instructionPerFrame/2; i++ {
-		g.Process()
-	}
 	img := image.NewRGBA(image.Rect(0, 0, g.height, g.width))
 
 	for i := 0; i < instructionPerFrame/2; i++ {
 		g.Process()
 	}
-	g.render(img, true)
+
 	if g.processor.IsInteruptsEnabled {
 		g.processor.IsInteruptsEnabled = false
-		g.processor.rst(1)
+		// g.processor.rst(1)
+		g.processor.SP -= 2
+		g.mmu.Memory[g.processor.SP] = byte(g.processor.PC & 0xFF)
+		g.mmu.Memory[g.processor.SP+1] = byte(g.processor.PC >> 8)
+
+		g.processor.PC = 0x0008
 	}
+	g.render(img, true)
 
 	for i := 0; i < instructionPerFrame/2; i++ {
 		g.Process()
 	}
-	g.render(img, false)
+
 	if g.processor.IsInteruptsEnabled {
 		g.processor.IsInteruptsEnabled = false
-		g.processor.rst(2)
+		// g.processor.rst(2)
+		g.processor.SP -= 2
+		g.mmu.Memory[g.processor.SP] = byte(g.processor.PC & 0xFF)
+		g.mmu.Memory[g.processor.SP+1] = byte(g.processor.PC >> 8)
+		g.processor.PC = 0x0010
 	}
+	g.render(img, false)
 
 	ebiImg := ebiten.NewImage(g.height, g.width)
 	ebiImg.ReplacePixels(img.Pix)
@@ -101,10 +105,11 @@ func (g *Game) render(img *image.RGBA, isTop bool) {
 	// 224 * 256 -> 28bytes * 256
 	// halve it for separated rendering top and bottom
 	for i := 0; i < 14*256; i++ {
+
 		value := g.mmu.Memory[start+i]
 		for bit := 0; bit < 8; bit++ {
 			color := uint8(0)
-			if (value>>bit)&0x01 > 0 {
+			if (value>>uint32(bit))&0x01 > 0 {
 				color = uint8(255)
 			}
 			pos := startPix + i*8 + bit
