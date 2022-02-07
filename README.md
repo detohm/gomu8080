@@ -22,3 +22,5 @@ go run example/main.go -path=[path to rom directory] -debug=false -spaceinvader=
 
 ## Important Notes
 Even though this project is passed all CPU diagnostic tests above, the Space Invader mode doesn't work as expected. There are some glitches in the animation logic. Therefore, PRs are welcome :)
+
++[Space Invaders](https://github.com/detohm/gomu8080/blob/main/docs/space-invaders.jpg?raw=true)
