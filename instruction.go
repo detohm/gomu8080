@@ -10,20 +10,6 @@ func (p *Processor) nop() {
 // Increase value of 8-bit register by 1
 func (p *Processor) inr(reg *byte) {
 	p.dasm("INR")
-
-	// result16 := uint16(*reg) + 1
-	// result8 := byte(result16 & 0x00FF)
-
-	// var addHalfCarryTable = []bool{false, false, true, false, true, false, true, true}
-
-	// index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
-	// p.AuxiliaryCarry = addHalfCarryTable[index]
-
-	// *reg = byte(result16 & 0x00ff)
-
-	// p.SetZero(*reg)
-	// p.SetSign(*reg)
-	// p.SetParity(*reg)
 	p.SetFlagsAdd(*reg, 1, 0, 3) // update only ac
 	*reg += 1
 
@@ -32,19 +18,6 @@ func (p *Processor) inr(reg *byte) {
 // Decrease value of 8-bit register by 1
 func (p *Processor) dcr(reg *byte) {
 	p.dasm("DCR")
-
-	// result16 := uint16(*reg) + (uint16(0xFFFF) ^ uint16(0x01)) + 0x01
-	// result8 := byte(result16 & 0xFF)
-
-	// var subHalfCarryTable = []bool{true, false, false, false, true, true, true, false}
-	// index := (((*reg & 0x88) >> 1) | ((0x01 & 0x88) >> 2) | ((result8 & 0x88) >> 3)) & 0x7
-	// p.AuxiliaryCarry = subHalfCarryTable[index]
-
-	// *reg = byte(result16 & 0xff)
-
-	// p.SetZero(*reg)
-	// p.SetSign(*reg)
-	// p.SetParity(*reg)
 	p.SetFlagsSub(*reg, 1, 0, 3) // update ac only
 	*reg -= 1
 
