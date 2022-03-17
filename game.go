@@ -40,9 +40,6 @@ func NewGame(pcs *Processor, mmu *MMU, width int, height int) *Game {
 
 	game.dip4 = true
 
-	//game.dip3 = true
-	//game.dip5 = true
-
 	return &game
 }
 
@@ -62,7 +59,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	if g.processor.IsInteruptsEnabled {
 		g.processor.IsInteruptsEnabled = false
-		// g.processor.rst(1)
+
 		g.processor.SP -= 2
 		g.mmu.Memory[g.processor.SP] = byte(g.processor.PC & 0xFF)
 		g.mmu.Memory[g.processor.SP+1] = byte(g.processor.PC >> 8)
@@ -77,7 +74,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	if g.processor.IsInteruptsEnabled {
 		g.processor.IsInteruptsEnabled = false
-		// g.processor.rst(2)
+
 		g.processor.SP -= 2
 		g.mmu.Memory[g.processor.SP] = byte(g.processor.PC & 0xFF)
 		g.mmu.Memory[g.processor.SP+1] = byte(g.processor.PC >> 8)
