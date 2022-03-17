@@ -67,8 +67,6 @@ func main() {
 		ebiten.SetWindowSize(224*2, 256*2)
 		ebiten.SetWindowTitle("Hello, World!")
 		ebiten.SetFPSMode(ebiten.FPSModeVsyncOn)
-		// ebiten.SetRunnableOnUnfocused(true)
-		// ebiten.SetFPSMode(ebiten.FPSModeVsyncOffMaximum)
 		if err := ebiten.RunGame(game); err != nil {
 			log.Fatal(err)
 		}
